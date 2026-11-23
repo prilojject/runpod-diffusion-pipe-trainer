@@ -156,6 +156,7 @@ def write_train_toml(cfg: ResolvedConfig, models: dict[str, str], dataset_toml: 
         "caching_batch_size = 1",
         "steps_per_print = 1",
         "logging_steps = 1",
+        "skip_final_checkpoint = true",
         "",
         "[model]",
         f"type = '{cfg.pipe_type}'",
@@ -315,24 +316,29 @@ def run_command(cmd: list[str], log_path: str, progress, stage: str, total_steps
             logf.write(line + "\n")
             logf.flush()
             state["tail"] = (state["tail"] + [line])[-80:]
+            now = time.time()
             lm = LOSS_RE.search(line)
             if lm:
                 try:
                     state["loss"] = float(lm.group(1))
                 except ValueError:
                     pass
-            sm = re.search(r"step[s]?\s*=\s*(\d+)", line, re.I)
+            # Prefer Deepspeed "step=N". Ignore caching/tqdm counters (e.g. "2/20")
+            # unless the line clearly refers to training steps and matches total_steps.
+            sm = re.search(r"(?:^|\[).*?\bstep[s]?\s*=\s*(\d+)", line, re.I)
+            if not sm:
+                sm = re.search(r"\bstep[s]?\s*=\s*(\d+)", line, re.I)
             tm = re.search(r"\|\s*(\d+)/(\d+)\s*\[", line)
             step = None
             if sm:
                 step = int(sm.group(1))
-            elif tm and ("it/" in line or "s/it" in line or "step" in line.lower()):
+            elif tm and total_steps and int(tm.group(2)) == int(total_steps) and re.search(
+                    r"train|loss|it/s|s/it", line, re.I):
                 step = int(tm.group(1))
             if step and step > 0:
                 if state["first_step_t"] is None:
                     state["first_step_t"] = time.time()
                 state["step"] = step
-                now = time.time()
                 if now - state["last_report"] > 15:
                     state["last_report"] = now
                     payload = {"stage": stage, "step": step}
@@ -343,6 +349,18 @@ def run_command(cmd: list[str], log_path: str, progress, stage: str, total_steps
                     progress(payload)
             else:
                 log.info("pipe[%s]: %s", stage, line[:500])
+            # Heartbeat so a silent hang is visible in progress_update.
+            if now - state["last_report"] > 60:
+                state["last_report"] = now
+                payload = {"stage": stage, "heartbeat_s": round(now - t0),
+                           "last_log": (state["tail"] or [""])[-1][:300]}
+                if state["step"]:
+                    payload["step"] = state["step"]
+                if total_steps:
+                    payload["total_steps"] = total_steps
+                if state["loss"] is not None:
+                    payload["loss"] = state["loss"]
+                progress(payload)
         rc = proc.wait()
     elapsed = time.time() - t0
     if rc != 0:

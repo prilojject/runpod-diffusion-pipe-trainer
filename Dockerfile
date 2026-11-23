@@ -59,6 +59,9 @@ print('torch', torch.__version__, '| cuda', torch.version.cuda, \
 
 COPY handler.py /app/handler.py
 COPY src /app/src
+COPY scripts/patch_diffusion_pipe.py /tmp/patch_diffusion_pipe.py
+RUN python /tmp/patch_diffusion_pipe.py && rm /tmp/patch_diffusion_pipe.py
+
 
 # No secrets are baked in: HF_TOKEN / BUCKET_* come from Runpod secrets at runtime.
 CMD ["python", "-u", "/app/handler.py"]

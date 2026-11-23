@@ -3,7 +3,6 @@
 .runpod
 tests
 examples
-scripts
 docs
 *.md
 !README.md

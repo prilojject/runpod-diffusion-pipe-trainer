@@ -34,6 +34,7 @@ def test_sdxl_toml_dtype_and_paths(tmp_path):
     assert "checkpoint_path =" in text
     assert "alpha" not in text  # diffusion-pipe forbids alpha in the adapter table
     assert "fp8_scaled" not in text
+    assert "skip_final_checkpoint = true" in text
     assert "skip_empty_caption = true" in ds_text
     assert media in ds_text
     assert "frame_buckets = [1]" in ds_text
