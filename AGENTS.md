@@ -6,7 +6,7 @@ This is a Runpod Serverless worker that trains LoRAs with [tdrussell/diffusion-p
 
 - Accepts a job `input` (or Hub form env) with `dataset_url`, `trigger_word`, and optional `base_model`.
 - Default model is **SDXL** (public, ~6.5 GiB, 24 GB). Also Wan 2.1 / 2.2 and FLUX.1-dev.
-- Writes two TOML files (train + dataset) and launches training. One GPU: `python -u train.py --deepspeed --config train.toml` (avoids a Deepspeed-launcher hang on serverless). Two or more GPUs: `deepspeed --num_gpus=N --master_addr=127.0.0.1 --master_port=29500 train.py --deepspeed --config train.toml`. Always sets `NCCL_SHM_DISABLE=1`.
+- Writes two TOML files (train + dataset) and launches training. One GPU: `python -u train.py --deepspeed --config train.toml` with `RANK=0 LOCAL_RANK=0 WORLD_SIZE=1 MASTER_ADDR=127.0.0.1 MASTER_PORT=29500` (avoids a Deepspeed-launcher hang on serverless, and avoids the mpi4py fallback inside `deepspeed.init_distributed()`). Two or more GPUs: `deepspeed --num_gpus=N --master_addr=127.0.0.1 --master_port=29500 train.py --deepspeed --config train.toml`. Always sets `NCCL_SHM_DISABLE=1`.
 - Delivers the `.safetensors` LoRA to a network volume, Hugging Face, a presigned PUT URL, or `BUCKET_*`.
 
 ## Do / don't

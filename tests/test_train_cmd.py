@@ -57,6 +57,8 @@ def test_wan14_min_vram_and_nccl_on_4090(tmp_path):
     assert "-u" in cmd and "--deepspeed" in cmd and cmd[-1].endswith("train.toml")
     assert env["NCCL_P2P_DISABLE"] == "1" and env["NCCL_IB_DISABLE"] == "1"
     assert env["NCCL_SHM_DISABLE"] == "1"
+    assert env["WORLD_SIZE"] == "1" and env["RANK"] == "0" and env["LOCAL_RANK"] == "0"
+    assert env["MASTER_ADDR"] == "127.0.0.1"
 
 
 def test_no_nccl_disable_on_a100():
@@ -64,6 +66,7 @@ def test_no_nccl_disable_on_a100():
     cmd, env = build_train_command(cfg, "/tmp/t.toml", gpu_count=1, gpu_name="NVIDIA A100 80GB")
     assert "NCCL_P2P_DISABLE" not in env
     assert env["NCCL_SHM_DISABLE"] == "1"
+    assert env["WORLD_SIZE"] == "1" and env["RANK"] == "0"
     assert "--deepspeed" in cmd and cmd[0] != "deepspeed"
 
 
@@ -74,6 +77,7 @@ def test_pipeline_stages_two_gpus():
     assert "--master_addr=127.0.0.1" in cmd
     assert env.get("NCCL_P2P_DISABLE") == "1"
     assert env["NCCL_SHM_DISABLE"] == "1"
+    assert "WORLD_SIZE" not in env
 
 
 def test_wan22_timestep_range(tmp_path):

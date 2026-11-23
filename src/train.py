@@ -237,6 +237,10 @@ def build_train_command(cfg: ResolvedConfig, train_toml: str, gpu_count: int,
     # 1 GPU: call train.py directly. The Deepspeed launcher can hang after
     # "Unable to find hostfile..." on Runpod serverless (tiny /dev/shm, no pdsh).
     if num == 1:
+        # Call train.py directly and pretend we were launched by torchrun.
+        # Without RANK/WORLD_SIZE, deepspeed.init_distributed() falls back to
+        # mpi4py, which is not in the image. The Deepspeed launcher itself can
+        # hang after "Unable to find hostfile..." on Runpod serverless.
         cmd = [sys.executable, "-u", script, "--deepspeed", "--config", train_toml]
     else:
         cmd = [
@@ -249,6 +253,14 @@ def build_train_command(cfg: ResolvedConfig, train_toml: str, gpu_count: int,
         # Default Docker/serverless shm is often 64MiB; NCCL SHM init can hang.
         "NCCL_SHM_DISABLE": "1",
     }
+    if num == 1:
+        extra.update({
+            "MASTER_ADDR": "127.0.0.1",
+            "MASTER_PORT": "29500",
+            "RANK": "0",
+            "LOCAL_RANK": "0",
+            "WORLD_SIZE": "1",
+        })
     if is_rtx_40xx(gpu_name) or os.environ.get("FORCE_NCCL_DISABLE") == "1":
         extra["NCCL_P2P_DISABLE"] = "1"
         extra["NCCL_IB_DISABLE"] = "1"
