@@ -9,6 +9,7 @@ import re
 import shlex
 import shutil
 import subprocess
+import sys
 import threading
 import time
 from typing import Any
@@ -233,9 +234,20 @@ def build_train_command(cfg: ResolvedConfig, train_toml: str, gpu_count: int,
         )
     num = gpu_count  # use every visible GPU; data-parallel degree is num / stages
     script = os.path.join(PIPE_DIR, "train.py")
-    cmd = ["deepspeed", f"--num_gpus={num}", script, "--deepspeed", "--config", train_toml]
+    # 1 GPU: call train.py directly. The Deepspeed launcher can hang after
+    # "Unable to find hostfile..." on Runpod serverless (tiny /dev/shm, no pdsh).
+    if num == 1:
+        cmd = [sys.executable, "-u", script, "--deepspeed", "--config", train_toml]
+    else:
+        cmd = [
+            "deepspeed", f"--num_gpus={num}",
+            "--master_addr=127.0.0.1", "--master_port=29500",
+            script, "--deepspeed", "--config", train_toml,
+        ]
     extra = {
         "PYTHONUNBUFFERED": "1",
+        # Default Docker/serverless shm is often 64MiB; NCCL SHM init can hang.
+        "NCCL_SHM_DISABLE": "1",
     }
     if is_rtx_40xx(gpu_name) or os.environ.get("FORCE_NCCL_DISABLE") == "1":
         extra["NCCL_P2P_DISABLE"] = "1"
@@ -302,55 +314,16 @@ def run_command(cmd: list[str], log_path: str, progress, stage: str, total_steps
                         proc.kill()
 
         threading.Thread(target=watchdog, daemon=True).start()
-        buf = ""
-        while True:
-            ch = proc.stdout.read(1)
-            if ch == "" and proc.poll() is not None:
-                break
-            if ch not in ("\n", "\r"):
-                buf += ch
-                continue
-            line, buf = redact(buf), ""
-            if not line.strip():
-                continue
-            logf.write(line + "\n")
-            logf.flush()
-            state["tail"] = (state["tail"] + [line])[-80:]
-            now = time.time()
-            lm = LOSS_RE.search(line)
-            if lm:
-                try:
-                    state["loss"] = float(lm.group(1))
-                except ValueError:
-                    pass
-            # Prefer Deepspeed "step=N". Ignore caching/tqdm counters (e.g. "2/20")
-            # unless the line clearly refers to training steps and matches total_steps.
-            sm = re.search(r"(?:^|\[).*?\bstep[s]?\s*=\s*(\d+)", line, re.I)
-            if not sm:
-                sm = re.search(r"\bstep[s]?\s*=\s*(\d+)", line, re.I)
-            tm = re.search(r"\|\s*(\d+)/(\d+)\s*\[", line)
-            step = None
-            if sm:
-                step = int(sm.group(1))
-            elif tm and total_steps and int(tm.group(2)) == int(total_steps) and re.search(
-                    r"train|loss|it/s|s/it", line, re.I):
-                step = int(tm.group(1))
-            if step and step > 0:
-                if state["first_step_t"] is None:
-                    state["first_step_t"] = time.time()
-                state["step"] = step
-                if now - state["last_report"] > 15:
-                    state["last_report"] = now
-                    payload = {"stage": stage, "step": step}
-                    if total_steps:
-                        payload["total_steps"] = total_steps
-                    if state["loss"] is not None:
-                        payload["loss"] = state["loss"]
-                    progress(payload)
-            else:
-                log.info("pipe[%s]: %s", stage, line[:500])
-            # Heartbeat so a silent hang is visible in progress_update.
-            if now - state["last_report"] > 60:
+
+        stop_hb = threading.Event()
+
+        def heartbeat():
+            while not stop_hb.wait(60):
+                if proc.poll() is not None:
+                    return
+                now = time.time()
+                if now - state["last_report"] < 55:
+                    continue
                 state["last_report"] = now
                 payload = {"stage": stage, "heartbeat_s": round(now - t0),
                            "last_log": (state["tail"] or [""])[-1][:300]}
@@ -360,7 +333,74 @@ def run_command(cmd: list[str], log_path: str, progress, stage: str, total_steps
                     payload["total_steps"] = total_steps
                 if state["loss"] is not None:
                     payload["loss"] = state["loss"]
-                progress(payload)
+                try:
+                    progress(payload)
+                except Exception:
+                    log.debug("heartbeat progress failed", exc_info=True)
+
+        threading.Thread(target=heartbeat, daemon=True).start()
+        buf = ""
+        try:
+            while True:
+                ch = proc.stdout.read(1)
+                if ch == "" and proc.poll() is not None:
+                    break
+                if ch not in ("\n", "\r"):
+                    buf += ch
+                    continue
+                line, buf = redact(buf), ""
+                if not line.strip():
+                    continue
+                logf.write(line + "\n")
+                logf.flush()
+                state["tail"] = (state["tail"] + [line])[-80:]
+                now = time.time()
+                lm = LOSS_RE.search(line)
+                if lm:
+                    try:
+                        state["loss"] = float(lm.group(1))
+                    except ValueError:
+                        pass
+                # Prefer Deepspeed "step=N". Ignore caching/tqdm counters (e.g. "2/20")
+                # unless the line clearly refers to training steps and matches total_steps.
+                sm = re.search(r"(?:^|\[).*?\bstep[s]?\s*=\s*(\d+)", line, re.I)
+                if not sm:
+                    sm = re.search(r"\bstep[s]?\s*=\s*(\d+)", line, re.I)
+                tm = re.search(r"\|\s*(\d+)/(\d+)\s*\[", line)
+                step = None
+                if sm:
+                    step = int(sm.group(1))
+                elif tm and total_steps and int(tm.group(2)) == int(total_steps) and re.search(
+                        r"train|loss|it/s|s/it", line, re.I):
+                    step = int(tm.group(1))
+                if step and step > 0:
+                    if state["first_step_t"] is None:
+                        state["first_step_t"] = time.time()
+                    state["step"] = step
+                    if now - state["last_report"] > 15:
+                        state["last_report"] = now
+                        payload = {"stage": stage, "step": step}
+                        if total_steps:
+                            payload["total_steps"] = total_steps
+                        if state["loss"] is not None:
+                            payload["loss"] = state["loss"]
+                        progress(payload)
+                else:
+                    log.info("pipe[%s]: %s", stage, line[:500])
+                # Heartbeat so a silent hang is visible in progress_update.
+                if now - state["last_report"] > 60:
+                    state["last_report"] = now
+                    payload = {"stage": stage, "heartbeat_s": round(now - t0),
+                               "last_log": (state["tail"] or [""])[-1][:300]}
+                    if state["step"]:
+                        payload["step"] = state["step"]
+                    if total_steps:
+                        payload["total_steps"] = total_steps
+                    if state["loss"] is not None:
+                        payload["loss"] = state["loss"]
+                    progress(payload)
+        finally:
+            stop_hb.set()
         rc = proc.wait()
     elapsed = time.time() - t0
     if rc != 0:

@@ -108,7 +108,7 @@ To train a model that does not fit on one 24 GB card:
 2. Set `pipeline_stages` to 2 (GPU count must be divisible by this). With 4 GPUs and `pipeline_stages=2` you get two data-parallel replicas, each split across 2 GPUs.
 3. Leave `blocks_to_swap` at 0 — block swap only works with `pipeline_stages=1`.
 
-On **RTX 4090 / 40-series** the worker sets `NCCL_P2P_DISABLE=1` and `NCCL_IB_DISABLE=1` (required by Deepspeed on those cards).
+On **RTX 4090 / 40-series** the worker sets `NCCL_P2P_DISABLE=1` and `NCCL_IB_DISABLE=1` (required by Deepspeed on those cards). On every GPU the worker also sets `NCCL_SHM_DISABLE=1` so training does not hang on the default 64 MiB Docker `/dev/shm`. A single-GPU job launches `train.py` directly instead of the Deepspeed multi-node launcher.
 
 ---
 

@@ -53,22 +53,27 @@ def test_wan14_min_vram_and_nccl_on_4090(tmp_path):
     assert "activation_checkpointing = 'unsloth'" in text
     cmd, env = build_train_command(cfg, str(tmp_path / "train.toml"), gpu_count=1,
                                    gpu_name="NVIDIA GeForce RTX 4090")
-    assert cmd[0] == "deepspeed" and "--num_gpus=1" in cmd and "--deepspeed" in cmd
+    assert cmd[0].endswith("python") or "python" in os.path.basename(cmd[0])
+    assert "-u" in cmd and "--deepspeed" in cmd and cmd[-1].endswith("train.toml")
     assert env["NCCL_P2P_DISABLE"] == "1" and env["NCCL_IB_DISABLE"] == "1"
+    assert env["NCCL_SHM_DISABLE"] == "1"
 
 
 def test_no_nccl_disable_on_a100():
     cfg = _cfg()
     cmd, env = build_train_command(cfg, "/tmp/t.toml", gpu_count=1, gpu_name="NVIDIA A100 80GB")
     assert "NCCL_P2P_DISABLE" not in env
-    assert cmd[0] == "deepspeed"
+    assert env["NCCL_SHM_DISABLE"] == "1"
+    assert "--deepspeed" in cmd and cmd[0] != "deepspeed"
 
 
 def test_pipeline_stages_two_gpus():
     cfg = _cfg(pipeline_stages=2)
     cmd, env = build_train_command(cfg, "/tmp/t.toml", gpu_count=2, gpu_name="NVIDIA GeForce RTX 4090")
-    assert "--num_gpus=2" in cmd
+    assert cmd[0] == "deepspeed" and "--num_gpus=2" in cmd
+    assert "--master_addr=127.0.0.1" in cmd
     assert env.get("NCCL_P2P_DISABLE") == "1"
+    assert env["NCCL_SHM_DISABLE"] == "1"
 
 
 def test_wan22_timestep_range(tmp_path):
