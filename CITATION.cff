@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+title: "Diffusion-Pipe LoRA Trainer (SDXL, Wan, FLUX) — Runpod Serverless worker"
+message: "If you use this software, please cite it and tdrussell/diffusion-pipe."
+type: software
+authors:
+  - name: prilojject
+repository-code: "https://github.com/prilojject/runpod-diffusion-pipe-trainer"
+url: "https://console.runpod.io/hub/prilojject/runpod-diffusion-pipe-trainer"
+license: GPL-3.0
+version: 1.0.0
+date-released: "2026-11-23"
+references:
+  - type: software
+    title: diffusion-pipe
+    authors:
+      - name: tdrussell
+    repository-code: "https://github.com/tdrussell/diffusion-pipe"
+    license: GPL-3.0

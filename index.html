@@ -1,0 +1,29 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Diffusion-Pipe LoRA Trainer (SDXL, Wan, FLUX) — Runpod Serverless worker</title>
+<meta name="description" content="Train SDXL, Wan 2.1/2.2 and FLUX.1-dev LoRAs with tdrussell/diffusion-pipe on Runpod Serverless. Send a zip of images or videos and a trigger word; get a .safetensors LoRA. Default: SDXL, 24 GB, no token.">
+<link rel="icon" href="assets/icon.png"><link rel="alternate" type="text/plain" title="llms.txt" href="llms.txt">
+<meta property="og:title" content="Diffusion-Pipe LoRA Trainer (SDXL, Wan, FLUX) — Runpod Serverless worker">
+<meta property="og:description" content="Multi-model LoRA trainer with Deepspeed pipeline parallelism on Runpod Serverless. Default base model: SDXL.">
+<meta property="og:image" content="https://prilojject.github.io/runpod-diffusion-pipe-trainer/assets/banner.png">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"Diffusion-Pipe LoRA Trainer (SDXL, Wan, FLUX)","description":"Train SDXL, Wan and FLUX LoRAs with tdrussell/diffusion-pipe on Runpod Serverless.","codeRepository":"https://github.com/prilojject/runpod-diffusion-pipe-trainer","license":"https://www.gnu.org/licenses/gpl-3.0.html","author":{"@type":"Person","name":"prilojject"}}</script>
+<style>body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#0c1026;color:#e6e8f5;line-height:1.55}
+main{max-width:880px;margin:0 auto;padding:24px}img{width:100%;border-radius:14px}h1{font-size:28px;margin:24px 0 8px}
+a{color:#5eead4}.b{display:inline-block;margin:4px 6px 4px 0;padding:8px 14px;border-radius:999px;background:#1e2550;border:1px solid #3b4685;text-decoration:none;color:#fff}
+pre{background:#151a3a;padding:14px;border-radius:10px;overflow:auto;font-size:13px}li{margin:6px 0}</style></head>
+<body><main><img src="assets/banner.png" alt="Diffusion-Pipe LoRA Trainer (SDXL, Wan, FLUX) — Runpod Serverless worker"><h1>Diffusion-Pipe LoRA Trainer</h1>
+<p>Train SDXL, Wan 2.1 / 2.2 and FLUX.1-dev LoRAs with <a href="https://github.com/tdrussell/diffusion-pipe">tdrussell/diffusion-pipe</a> and Deepspeed pipeline parallelism on Runpod Serverless. Send a zip of images or videos and a trigger word; get a <code>.safetensors</code> LoRA on your network volume, Hugging Face repo, or S3 bucket. Default model: SDXL (public weights, ~6.5&nbsp;GiB, fits 24&nbsp;GB).</p>
+<p><a class="b" href="https://console.runpod.io/hub/prilojject/runpod-diffusion-pipe-trainer">Deploy on Runpod Hub</a><a class="b" href="https://github.com/prilojject/runpod-diffusion-pipe-trainer">GitHub repository</a><a class="b" href="https://github.com/prilojject/runpod-diffusion-pipe-trainer#readme">README</a><a class="b" href="llms.txt">llms.txt</a><a class="b" href="openapi.yaml">openapi.yaml</a><a class="b" href="https://github.com/prilojject/runpod-diffusion-pipe-trainer/blob/main/AGENTS.md">AGENTS.md</a><a class="b" href="https://github.com/prilojject/runpod-diffusion-pipe-trainer/releases">Releases</a></p>
+<h2>Quick start</h2>
+<pre>curl -X POST https://api.runpod.ai/v2/$ENDPOINT_ID/run \
+  -H "Authorization: Bearer $RUNPOD_API_KEY" -H "Content-Type: application/json" \
+  -d '{"input": {"dry_run": true, "base_model": "sdxl",
+                 "dataset_url": "https://raw.githubusercontent.com/prilojject/runpod-diffusion-pipe-trainer/main/examples/datasets/tiny_sdxl.zip",
+                 "trigger_word": "zxowl", "class_word": "figurine"}}'</pre>
+<ul>
+<li>Always use async <code>/run</code> for training and raise <code>policy.executionTimeout</code> (the 600&nbsp;s default is too short; a cold start may download ~6.5&nbsp;GiB for SDXL).</li>
+<li>Put <code>HF_TOKEN</code> in a Runpod secret for FLUX.1-dev or Hugging Face uploads. Tokens in the job input are rejected. SDXL and official Wan-AI catalogs are public.</li>
+<li>Hub test: SDXL, 20 steps, 512&nbsp;px, no samples, RTX 4090. 14B / Flux / multi-GPU are not part of the official test.</li>
+<li>This worker is GPL-3.0 (same as upstream diffusion-pipe). It is not a clone of the kohya image-LoRA or musubi video-LoRA workers.</li>
+</ul>
+<p>Full documentation: <a href="https://github.com/prilojject/runpod-diffusion-pipe-trainer#readme">README on GitHub</a>. The Hub listing link works after Runpod's review.</p>
+</main></body></html>

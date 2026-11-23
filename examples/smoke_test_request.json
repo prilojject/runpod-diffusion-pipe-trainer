@@ -1,0 +1,13 @@
+{
+  "input": {
+    "base_model": "sdxl",
+    "dataset_url": "https://raw.githubusercontent.com/prilojject/runpod-diffusion-pipe-trainer/main/examples/datasets/tiny_sdxl.zip",
+    "trigger_word": "zxowl",
+    "class_word": "figurine",
+    "steps": 20,
+    "rank": 8,
+    "resolution": 512,
+    "num_samples": 0,
+    "run_name": "hub-test-sdxl"
+  }
+}

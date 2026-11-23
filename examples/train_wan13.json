@@ -1,0 +1,14 @@
+{
+  "input": {
+    "base_model": "wan-t2v-1.3b",
+    "dataset_url": "https://example.com/clips.zip",
+    "trigger_word": "zxowl",
+    "steps": 2000,
+    "rank": 16,
+    "resolution": "832x480",
+    "frame_buckets": [
+      1,
+      17
+    ]
+  }
+}

@@ -1,0 +1,110 @@
+openapi: 3.0.3
+info:
+  title: Diffusion-Pipe LoRA Trainer
+  description: >
+    Runpod Serverless worker that trains LoRAs with tdrussell/diffusion-pipe.
+    Default base model is SDXL. Tokens must be set as Runpod secrets, never in the request body.
+  version: 1.0.0
+  license:
+    name: GPL-3.0
+    url: https://www.gnu.org/licenses/gpl-3.0.html
+servers:
+  - url: https://api.runpod.ai/v2/{endpoint_id}
+    variables:
+      endpoint_id:
+        default: ENDPOINT_ID
+paths:
+  /run:
+    post:
+      summary: Start a training job (async)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JobRequest"
+            example:
+              input:
+                base_model: sdxl
+                dataset_url: https://raw.githubusercontent.com/prilojject/runpod-diffusion-pipe-trainer/main/examples/datasets/tiny_sdxl.zip
+                trigger_word: zxowl
+                class_word: figurine
+                steps: 20
+                rank: 8
+                resolution: 512
+      responses:
+        "200":
+          description: Job accepted
+  /status/{job_id}:
+    get:
+      summary: Poll a job
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Job status
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    JobRequest:
+      type: object
+      required: [input]
+      properties:
+        input:
+          type: object
+          required: [dataset_url]
+          properties:
+            base_model:
+              type: string
+              default: sdxl
+              enum: [sdxl, wan-t2v-1.3b, wan-t2v-14b, wan-i2v-14b, wan22-t2v-a14b-low, wan22-t2v-a14b-high, wan22-i2v-a14b-low, wan22-i2v-a14b-high, flux-dev, ltx-video, qwen-image]
+            dataset_url:
+              type: string
+              format: uri
+            trigger_word:
+              type: string
+            class_word:
+              type: string
+            steps:
+              type: integer
+              default: 2000
+            rank:
+              type: integer
+              default: 16
+            learning_rate:
+              type: number
+              default: 0.00002
+            resolution:
+              oneOf:
+                - type: integer
+                - type: string
+              default: 1024
+            pipeline_stages:
+              type: integer
+              default: 1
+            blocks_to_swap:
+              oneOf:
+                - type: string
+                - type: integer
+              default: auto
+            dry_run:
+              type: boolean
+              default: false
+            hf_repo_id:
+              type: string
+            upload_url:
+              type: string
+              format: uri
+            run_name:
+              type: string

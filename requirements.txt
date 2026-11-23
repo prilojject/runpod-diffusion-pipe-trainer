@@ -1,0 +1,9 @@
+# Worker deps on top of tdrussell/diffusion-pipe (its requirements.txt is installed first).
+# torch / torchvision / triton / nvidia-* come from the PyTorch 2.9.0 + CUDA 12.8 base image
+# and are frozen as pip constraints.
+runpod==2.4.0
+boto3==1.44.9
+hf_transfer==0.1.9
+huggingface_hub>=0.26.0
+requests>=2.31
+Pillow>=10.0

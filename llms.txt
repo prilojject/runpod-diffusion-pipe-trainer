@@ -1,0 +1,34 @@
+# prilojject/runpod-diffusion-pipe-trainer
+
+> Runpod Serverless worker that trains LoRAs with tdrussell/diffusion-pipe (Deepspeed pipeline parallelism). Default base model: SDXL (public, ~6.5 GiB, 24 GB). Also Wan 2.1 / 2.2 and FLUX.1-dev. License: GPL-3.0.
+
+The worker is not a clone of prilojject/runpod-image-lora-trainer (kohya sd-scripts, SDXL/FLUX) or prilojject/runpod-video-lora-trainer (musubi-tuner, Wan only). This one is multi-model and can use 2+ GPUs via pipeline_stages.
+
+## Send
+
+Job input (or Hub env): dataset_url (https zip/tar of images and/or videos + same-name .txt captions), trigger_word, optional class_word, base_model (default sdxl), steps (default 2000; smoke 20), rank (default 16), learning_rate (default 2e-5), resolution (default 1024; smoke 512), pipeline_stages (default 1), blocks_to_swap (auto), dry_run, hf_repo_id, upload_url. Never send HF_TOKEN in the job input.
+
+## Get
+
+status, gpu, training (steps, loss, seconds), artifacts (lora file, size, volume/HF/S3 URL), lora_format (kohya | comfyui | diffusers), warnings. Attach a network volume or set hf_repo_id / upload_url / BUCKET_* or the LoRA is lost when the worker exits.
+
+## Models (v1)
+
+- sdxl (default): stabilityai/stable-diffusion-xl-base-1.0, sd_xl_base_1.0_0.9vae.safetensors, dtype bfloat16, LoRA format kohya, no token.
+- wan-t2v-1.3b / wan-t2v-14b / wan-i2v-14b: official Wan-AI catalogs, ComfyUI LoRA. I2V is video-only.
+- wan22-t2v-a14b-low / -high (and i2v): one expert per job, official Wan2.2 catalog.
+- flux-dev: black-forest-labs/FLUX.1-dev, gated, needs HF_TOKEN, Diffusers LoRA.
+- ltx-video, qwen-image: supported; hunyuan-video is a stub in v1.
+
+Official weights are bfloat16. Keep training dtype in sync. Do not use Comfy fp8_scaled files as v1 defaults.
+
+## Ops
+
+Image: ghcr.io/prilojject/runpod-diffusion-pipe-trainer. Cache: /runpod-volume/diffusion-pipe/models/. Runs: /runpod-volume/diffusion-pipe/runs/<run_name>/. On RTX 4090 set NCCL_P2P_DISABLE=1 NCCL_IB_DISABLE=1. Hub test: SDXL, 20 steps, 512 px, no samples, 1x RTX 4090, timeout 25 min. Upstream pin is SHA c114c67eef87ef3a16eb82e4bb24c8ef700c26e4 (no tags). Hub release targetCommitish must be main, not a SHA.
+
+## Links
+
+- https://github.com/prilojject/runpod-diffusion-pipe-trainer
+- https://console.runpod.io/hub/prilojject/runpod-diffusion-pipe-trainer
+- https://github.com/tdrussell/diffusion-pipe
+- AGENTS.md, openapi.yaml, CITATION.cff

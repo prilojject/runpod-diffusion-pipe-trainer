@@ -1,0 +1,8 @@
+{
+  "project": "prilojject/runpod-diffusion-pipe-trainer",
+  "name": "Diffusion-Pipe LoRA Trainer",
+  "description": "Runpod Serverless worker that trains SDXL, Wan 2.1/2.2 and FLUX.1-dev LoRAs with tdrussell/diffusion-pipe and Deepspeed pipeline parallelism.",
+  "docs": ["README.md", "llms.txt", "AGENTS.md", "openapi.yaml"],
+  "license": "GPL-3.0",
+  "keywords": ["runpod", "lora", "sdxl", "wan", "flux", "diffusion-pipe", "deepspeed", "serverless"]
+}

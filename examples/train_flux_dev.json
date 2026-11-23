@@ -1,0 +1,10 @@
+{
+  "input": {
+    "base_model": "flux-dev",
+    "dataset_url": "https://example.com/my-set.zip",
+    "trigger_word": "zxowl",
+    "steps": 2000,
+    "rank": 16,
+    "resolution": 1024
+  }
+}

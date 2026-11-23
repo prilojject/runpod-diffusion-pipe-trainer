@@ -1,0 +1,11 @@
+{
+  "input": {
+    "base_model": "sdxl",
+    "dataset_url": "https://example.com/my-set.zip",
+    "trigger_word": "zxowl",
+    "class_word": "figurine",
+    "steps": 2000,
+    "rank": 16,
+    "resolution": 1024
+  }
+}

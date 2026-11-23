@@ -1,0 +1,17 @@
+runpod-diffusion-pipe-trainer
+Copyright (c) 2026 prilojject
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. See the LICENSE file.
+
+This worker wraps and redistributes source from:
+
+  tdrussell/diffusion-pipe  https://github.com/tdrussell/diffusion-pipe
+  License: GPL-3.0
+  Pinned commit: c114c67eef87ef3a16eb82e4bb24c8ef700c26e4 (2026-11-19)
+
+diffusion-pipe vendors further GPL-licensed submodules (including ComfyUI).
+The complete corresponding source for this worker is this public GitHub
+repository and the pinned upstream revision recorded in the Dockerfile.
